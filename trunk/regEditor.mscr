@@ -1,0 +1,183 @@
+# Parameters:
+# 1 - string: name of the registry key to edit
+# 2 - string: name of the application that uses the registry information (just for display purpose)
+# 3 - boolean (optional, default is FALSE): if 0 or FALSE, do not prompt for change confirmation. If FALSE, the cancel button will just cancel the change
+# 4 - boolean (optional, default is FALSE): if 1 or TRUE, show dword values in dword:00000000 format
+
+regpath = argv[1]
+If(regpath eq "")
+  bigmessage("This program is run by a link in this form:^NL^CallScript(""regEditor.mscr"",^NL^""registry path to edit"",^NL^""Application name"",^NL^""confirm changes"")","ERROR")
+  exit
+EndIf
+
+root = Substr(regpath, 0, Find(regpath, "\" )-1)
+regpath = Substr(regpath,Find(regpath, "\" )+1)
+j=1
+regpathbase[j] = regpath
+
+If (NOT RegKeyExists(root, regpathbase[j]))
+	Message("Registry location " & root \ regpathbase[j] & " does not exist", "ERROR")
+	Exit # checks for file and exits script if it does not
+EndIf
+
+appName = argv[2]
+
+promptForConfirmation = (argv[3] eq "")?FALSE:argv[3]
+dwordformat = argv[4]
+Call("iniChoiceFormat")
+
+SetMessageFont(10)
+StatusType(ST_MESSAGE, 0)
+StatusMessage("Loading " & regpathbase[j] & " sections")
+
+Call("ChoiceList")
+
+While(choosenSection > 0)
+	If (MaxIndex(regarray) > 1)
+		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 0,0, regarray)
+		If (choosenSection > 0)
+			If(regpathbase[j-1] eq "")
+				If(RegKeyExists( root, regpathbase[j] \ Replace(Replace(regarray[choosenSection], "<",""),">","")))
+					j+=1
+					regpathbase[j] = regpathbase[j-1] \ Replace(Replace(regarray[choosenSection], "<",""),">","")
+					Call("ChoiceList")
+				Else
+					regkey[j] = regarray[choosenSection]
+					Call("regList")
+				EndIf
+			Else
+				If(RegKeyExists( root, regpathbase[j] \ Replace(Replace(regarray[choosenSection], "<",""),">","")))
+					j+=1
+					regpathbase[j] = regpathbase[j-1] \ Replace(Replace(regarray[choosenSection], "<",""),">","")
+					Call("ChoiceList")
+				Else
+					regkey[j] = regarray[choosenSection]
+					Call("regList")
+				EndIf
+			EndIf
+		Else
+			j-=1
+			If(j > 0)
+				Call("ChoiceList")
+			EndIf
+ 		EndIf
+ 	Else
+		Break
+	EndIf
+EndWhile
+
+Sub iniChoiceFormat
+	If (FileExists ( SystemPath("ScriptPath") \ "iniEditor.cfg" ))
+		choicesize = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicesize" )
+		choicetext = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicetext" )
+		choicefont = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicefont" )
+	EndIf
+	choicesize = (choicesize eq "")?20:choicesize
+	choicetext = (choicetext eq "")?12:choicetext
+	choicefont = (choicefont eq "")?"ARIAL":choicefont
+	SetChoiceEntryFormat(choicesize, choicetext, choicefont)
+EndSub
+
+sub ChoiceList
+	Global(j, root, regkey, regpathbase, regarray, choosenSection)
+	choosenSection = 1
+	clear(regarray)
+	i=1
+	ForEach regitem in regSubkeys ( root, regpathbase[j] )
+		regarray[i] = "<" & regitem & ">"
+		i+=1
+	EndForEach
+	ForEach regvalue, regdata in regValues ( root, regpathbase[j] )
+		regarray[i] = regvalue
+		i+=1
+	EndForEach
+	StatusClear()
+EndSub
+
+Sub regList
+	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue)
+	existValue = RegReadExt(root, regpathbase[j], regkey[j])
+	existValue = Replace(existValue, """", "")
+	multi = 0
+	xtypename = ""
+	If(Find(existValue, "hex(7)") or Find(existValue, "hex(2)"))
+		xtypename = SubStr(existValue,1,7)
+	# Convert hex characters to ASCII
+		existValue=Replace( existValue, "hex(2):", "," )
+		existValue=Replace( existValue, "hex(7):", "," )
+		while(1)
+			If(SubStr(existValue, Length(existValue)-2) eq ",00")
+				existValue = SubStr(existValue, 1, Length(existValue)-3)
+				If(existValue eq ",00")
+					Break
+				EndIf
+			Else
+				Break
+			EndIf
+		EndWhile
+		existValue=Replace( existValue, ",00,00", "~" )
+		existValue=Replace( existValue, ",00", "" )
+		If(existValue ne "")
+			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
+			existValue=Replace( existValue, "," & ToLower(xhex), xtext )
+			EndForEach
+		EndIf
+		If(xtypename eq "hex(7):")
+		multi = 1
+			existValue=Replace( existValue, "~", "^NL^" )
+		EndIf
+	ElseIf(Find(existValue, "hex:"))
+		xtypename = "hex:"
+		existValue=Replace( existValue, "hex:", "" )
+	ElseIf(Find(existValue, "dword"))
+		xtypename = "dword"
+		If(dwordformat)
+		Else
+			existValue=Replace( existValue, "dword:", "" )
+			existValue=HexToNumber(existValue)
+		EndIf
+	Else # Assume it must be a string
+	EndIf
+	newValue = Input(regkey[j] & "=", "Enter new value", 0, multi, existValue)
+	If (promptForConfirmation)
+		confirmation = Question("Set '" & regkey[j] &"' to new value?^NL^" & newValue, "Confirmation required!")
+	ElseIf (newValue eq "")
+		confirmation = FALSE
+	Else
+		confirmation = TRUE
+	EndIf
+	If (confirmation)
+		Call("iniWriteNewValue")
+	EndIf
+EndSub
+
+Sub iniWriteNewValue
+	Global(dwordformat, xtypename, j, root, regkey, regpathbase, newValue)
+	If(xtypename eq "hex(2):")
+	# Convert ASCII characters to hex
+		ForEach variable in charsOf ( newValue )
+			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
+				If(variable eq xtext)
+					variable="," & xhex & ",00"
+				EndIf
+			EndForEach
+			newerValue = newerValue & variable
+		EndForEach
+		newerValue = xtypename & SubStr(newerValue, 2)
+		RegWriteExt( root, regpathbase[j], regkey[j], newerValue )
+	ElseIf(xtypename eq "hex(7):")
+		newValuearray = Split(newValue, "^NL^", FALSE)
+		RegWriteMultiString(root, regpathbase[j], regkey[j], newValuearray )
+	ElseIf(xtypename eq "hex:")
+		newValue=Replace( newValue, ",", "" )
+		RegWriteBinary( root, regpathbase[j], regkey[j], newValue )
+	ElseIf(xtypename eq "dword")
+		If(dwordformat)
+			RegWriteExt( root, regpathbase[j], regkey[j], newValue )
+		Else
+			RegWriteDWord( root, regpathbase[j], regkey[j], newValue )
+		EndIf
+	Else # Assume it must be a string
+		RegWriteString( root, regpathbase[j], regkey[j], newValue )
+	EndIf
+EndSub
