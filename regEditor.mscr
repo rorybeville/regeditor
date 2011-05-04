@@ -33,9 +33,16 @@ StatusMessage("Loading " & regpathbase[j] & " sections")
 Call("ChoiceList")
 
 While(choosenSection > 0)
-	If (MaxIndex(regarray) > 1)
-		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 0,0, regarray)
-		If (choosenSection > 0)
+	If (MaxIndex(regarray) > 0)
+		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 1,0, regarray)
+		If (choosenSection = 1)
+			j-=1
+			If(j > 0)
+				Call("ChoiceList")
+			Else
+				Exit
+			EndIf
+		ElseIf (choosenSection > 0)
 			If(regpathbase[j-1] eq "")
 				If(RegKeyExists( root, regpathbase[j] \ Replace(Replace(regarray[choosenSection], "<",""),">","")))
 					j+=1
@@ -56,10 +63,7 @@ While(choosenSection > 0)
 				EndIf
 			EndIf
 		Else
-			j-=1
-			If(j > 0)
-				Call("ChoiceList")
-			EndIf
+			Exit
  		EndIf
  	Else
 		Break
@@ -83,14 +87,23 @@ sub ChoiceList
 	choosenSection = 1
 	clear(regarray)
 	i=1
+	If(j = 1)
+		regarray[i] = "<exit>"
+	Else
+		regarray[i] = "<..>"
+	EndIf
 	ForEach regitem in regSubkeys ( root, regpathbase[j] )
-		regarray[i] = "<" & regitem & ">"
 		i+=1
+		regarray[i] = "<" & regitem & ">"
 	EndForEach
 	ForEach regvalue, regdata in regValues ( root, regpathbase[j] )
-		regarray[i] = regvalue
 		i+=1
+		regarray[i] = regvalue
 	EndForEach
+	If(i eq 1)
+	Message("Registry location " & root \ regpathbase[j] & " is empty", "ERROR")
+	Exit # checks for file and exits script if it does not
+	EndIf
 	StatusClear()
 EndSub
 
