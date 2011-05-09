@@ -160,6 +160,7 @@ Sub regList
 		ForEach desckey, descvalue in iniKeys(descFileName, Substr(regpathbase[j], ReverseFind(regpathbase[j], "\" )+1))
 			If(desckey eq regkey[j])
 				commentList = descvalue
+				Break
 			EndIf
 		EndForEach
 	EndIf
