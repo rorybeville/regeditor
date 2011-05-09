@@ -1,0 +1,16 @@
+[Manila]
+binary.check=A binary example
+CHT.Reminder1.Color=Font color in RGB code as in 0,0,0 is black
+CHT.Reminder1.FontSize=Font size as in 12 point (dword)
+CHT.Reminder1.Tapx='x' coordinate of the tap point on the screen
+CHT.Reminder1.Tapy='y' coordinate of the tap point on the screen
+expandable.string=A expandable string example
+multiple.string=A multiple string example
+
+[test]
+test1=First test value
+test2=Second test value
+
+[Trial]
+Trial1=First trial value
+Trial2=Second trial value

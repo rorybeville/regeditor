@@ -1,6 +1,6 @@
 # Parameters:
 # 1 - string: name of the registry key to edit
-# 2 - string: name of the application that uses the registry information (just for display purpose)
+# 2 - string: name of the application that uses the registry information (for display purpose and name of description file)
 # 3 - boolean (optional, default is FALSE): if 0 or FALSE, do not prompt for change confirmation. If FALSE, the cancel button will just cancel the change
 # 4 - boolean (optional, default is FALSE): if 1 or TRUE, show dword values in dword:00000000 format
 
@@ -21,6 +21,11 @@ If (NOT RegKeyExists(root, regpathbase[j]))
 EndIf
 
 appName = argv[2]
+
+descFileName = appName & ".desc"
+If (FilePath(descFileName) eq "")
+	descFileName = SystemPath("ScriptPath") \ descFileName
+EndIf
 
 promptForConfirmation = (argv[3] eq "")?FALSE:argv[3]
 dwordformat = argv[4]
@@ -102,13 +107,13 @@ sub ChoiceList
 	EndForEach
 	If(i eq 1)
 	Message("Registry location " & root \ regpathbase[j] & " is empty", "ERROR")
-	Exit # checks for file and exits script if it does not
+	Exit # checks for file and exits script if it is empty
 	EndIf
 	StatusClear()
 EndSub
 
 Sub regList
-	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue)
+	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue, descFileName)
 	existValue = RegReadExt(root, regpathbase[j], regkey[j])
 	existValue = Replace(existValue, """", "")
 	multi = 0
@@ -151,7 +156,14 @@ Sub regList
 		EndIf
 	Else # Assume it must be a string
 	EndIf
-	newValue = Input(regkey[j] & "=", "Enter new value", 0, multi, existValue)
+	If(FileExists(descFileName))
+		ForEach desckey, descvalue in iniKeys(descFileName, Substr(regpathbase[j], ReverseFind(regpathbase[j], "\" )+1))
+			If(desckey eq regkey[j])
+				commentList = descvalue
+			EndIf
+		EndForEach
+	EndIf
+	newValue = Input(commentList & "^NL^" & "^NL^" & regkey[j] & "=", "Enter new value", 0, multi, existValue)
 	If (promptForConfirmation)
 		confirmation = Question("Set '" & regkey[j] &"' to new value?^NL^" & newValue, "Confirmation required!")
 	ElseIf (newValue eq "")
