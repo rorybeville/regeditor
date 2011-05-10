@@ -101,6 +101,8 @@ sub ChoiceList
 		i+=1
 		regarray[i] = "<" & regitem & ">"
 	EndForEach
+	i+=1
+	regarray[i] = "(Default)"
 	ForEach regvalue, regdata in regValues ( root, regpathbase[j] )
 		i+=1
 		regarray[i] = regvalue
@@ -114,12 +116,17 @@ EndSub
 
 Sub regList
 	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue, descFileName)
-	existValue = RegReadExt(root, regpathbase[j], regkey[j])
-	existValue = Replace(existValue, """", "")
+	If(regkey[j] eq "(Default)")
+		existValue = RegReadExt(root, regpathbase[j], "")
+		existValue = (existValue eq "-")?"":existValue
+	Else
+		existValue = RegReadExt(root, regpathbase[j], regkey[j])
+	EndIf
 	multi = 0
 	xtypename = ""
-	If(Find(existValue, "hex(7)") or Find(existValue, "hex(2)"))
+	If(Find(existValue, "hex(7):") or Find(existValue, "hex(2):"))
 		xtypename = SubStr(existValue,1,7)
+		xtypename = (xtypename eq "hex(2):")?"ExpandableString":"MultiString"
 	# Convert hex characters to ASCII
 		existValue=Replace( existValue, "hex(2):", "," )
 		existValue=Replace( existValue, "hex(7):", "," )
@@ -140,21 +147,42 @@ Sub regList
 			existValue=Replace( existValue, "," & ToLower(xhex), xtext )
 			EndForEach
 		EndIf
-		If(xtypename eq "hex(7):")
+		If(xtypename eq "MultiString")
 		multi = 1
 			existValue=Replace( existValue, "~", "^NL^" )
 		EndIf
 	ElseIf(Find(existValue, "hex:"))
-		xtypename = "hex:"
+		xtypename = "Binary"
 		existValue=Replace( existValue, "hex:", "" )
 	ElseIf(Find(existValue, "dword"))
-		xtypename = "dword"
-		If(dwordformat)
-		Else
+		xtypename = "Dword"
+		If(NOT dwordformat)
+			xtypename = "Decimal"
 			existValue=Replace( existValue, "dword:", "" )
 			existValue=HexToNumber(existValue)
 		EndIf
-	Else # Assume it must be a string
+	ElseIf(SubStr(existValue,1,1) eq """")
+		xtypename = "String"
+		existValue = SubStr(SubStr(existValue,1, Length(existValue)-1),2)
+		existValue = Replace(existValue,"\\","\")
+		existValue = Replace(existValue,"\""", """")
+	Else # May be undefined
+		ChoiceDefault("Unknown value type", "Select the type of value. Cancel to skip.", 1, 0, "String", "Decimal", "Dword", "Binary", "MultiString", "ExpandableString")
+		Case(1)
+			xtypename = "String"
+		Case(2)
+			xtypename = "Decimal"
+		Case(3)
+			xtypename = "Dword"
+		Case(4)
+			xtypename = "Binary"
+		Case(5)
+			xtypename = "MultiString"
+		Case(6)
+			xtypename = "ExpandableString"
+		Default
+			xtypename = "unknown"
+		EndChoice
 	EndIf
 	If(FileExists(descFileName))
 		ForEach desckey, descvalue in iniKeys(descFileName, Substr(regpathbase[j], ReverseFind(regpathbase[j], "\" )+1))
@@ -164,7 +192,9 @@ Sub regList
 			EndIf
 		EndForEach
 	EndIf
-	newValue = Input(commentList & "^NL^" & "^NL^" & regkey[j] & "=", "Enter new value", 0, multi, existValue)
+	If(xtypename ne "unknown")
+		newValue = Input(commentList & "^NL^" & "^NL^" & regkey[j] & " = " & xtypename , "Enter new value", 0, multi, existValue)
+	EndIf
 	If (promptForConfirmation)
 		confirmation = Question("Set '" & regkey[j] &"' to new value?^NL^" & newValue, "Confirmation required!")
 	ElseIf (newValue eq "")
@@ -179,7 +209,8 @@ EndSub
 
 Sub iniWriteNewValue
 	Global(dwordformat, xtypename, j, root, regkey, regpathbase, newValue)
-	If(xtypename eq "hex(2):")
+	regkey[j] = (regkey[j] eq "(Default)")?"":regkey[j]
+	If(xtypename eq "ExpandableString")
 	# Convert ASCII characters to hex
 		ForEach variable in charsOf ( newValue )
 			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
@@ -191,19 +222,18 @@ Sub iniWriteNewValue
 		EndForEach
 		newerValue = xtypename & SubStr(newerValue, 2)
 		RegWriteExt( root, regpathbase[j], regkey[j], newerValue )
-	ElseIf(xtypename eq "hex(7):")
+	ElseIf(xtypename eq "MultiString")
 		newValuearray = Split(newValue, "^NL^", FALSE)
 		RegWriteMultiString(root, regpathbase[j], regkey[j], newValuearray )
-	ElseIf(xtypename eq "hex:")
+	ElseIf(xtypename eq "Binary")
 		newValue=Replace( newValue, ",", "" )
 		RegWriteBinary( root, regpathbase[j], regkey[j], newValue )
-	ElseIf(xtypename eq "dword")
-		If(dwordformat)
-			RegWriteExt( root, regpathbase[j], regkey[j], newValue )
-		Else
-			RegWriteDWord( root, regpathbase[j], regkey[j], newValue )
-		EndIf
-	Else # Assume it must be a string
+	ElseIf(xtypename eq "Dword")
+		RegWriteExt( root, regpathbase[j], regkey[j], newValue )
+	ElseIf(xtypename eq "Decimal")
+		RegWriteDWord( root, regpathbase[j], regkey[j], newValue )
+	ElseIf(xtypename eq "String")
 		RegWriteString( root, regpathbase[j], regkey[j], newValue )
+	Else # May be undefined
 	EndIf
 EndSub
