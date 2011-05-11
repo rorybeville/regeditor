@@ -76,10 +76,10 @@ While(choosenSection > 0)
 EndWhile
 
 Sub iniChoiceFormat
-	If (FileExists ( SystemPath("ScriptPath") \ "iniEditor.cfg" ))
-		choicesize = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicesize" )
-		choicetext = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicetext" )
-		choicefont = IniRead( SystemPath("ScriptPath") \ "iniEditor.cfg", "Settings", "choicefont" )
+	If (FileExists ( SystemPath("ScriptPath") \ "regEditor.cfg" ))
+		choicesize = IniRead( SystemPath("ScriptPath") \ "regEditor.cfg", "Settings", "choicesize" )
+		choicetext = IniRead( SystemPath("ScriptPath") \ "regEditor.cfg", "Settings", "choicetext" )
+		choicefont = IniRead( SystemPath("ScriptPath") \ "regEditor.cfg", "Settings", "choicefont" )
 	EndIf
 	choicesize = (choicesize eq "")?20:choicesize
 	choicetext = (choicetext eq "")?12:choicetext
