@@ -1,0 +1,96 @@
+# Parameters:
+# 1 - string: name of the registry key to extract
+# 2 - string: name of the application that uses the registry information (for display purpose and name of description file)
+
+ShowWaitCursor
+regpath = argv[1]
+If(regpath eq "")
+  bigmessage("This program is run by a link in this form:^NL^CallScript(""regExtractor.mscr"",^NL^""registry path to extract"",^NL^""Application name"")","ERROR")
+  exit
+EndIf
+
+root = Substr(regpath, 0, Find(regpath, "\" )-1)
+regpath = Substr(regpath,Find(regpath, "\" )+1)
+
+If (NOT RegKeyExists(root, regpath))
+	Message("Registry location " & root \ regpath & " does not exist", "ERROR")
+	Exit # checks for file and exits script if it does not
+EndIf
+
+appName = argv[2]
+
+descFileName = appName & ".desc"
+descFileName = SystemPath("ScriptPath") \ descFileName
+If(FileExists(descFileName))
+    Delete(descFileName)
+EndIf
+
+i=1
+descFileData[i]="[" & SubStr(regpath,ReverseFind(regpath, "\")+1) & "]"
+# Main folder
+path0 = regpath
+Call("regitems", path0)
+ForEach regitem in regSubkeys ( root, path0 )
+	i+=1
+	descFileData[i]="^NL^[" & regitem & "]"
+	# First level of subfolders
+	path1 = path0 \ regitem
+	Call("regitems", path1)
+	ForEach regitem in regSubkeys ( root, path1 )
+		i+=1
+		descFileData[i]="^NL^[" & regitem & "]"
+		# Second level of subfolders
+		path2 = path1 \ regitem
+		Call("regitems", path2)
+		ForEach regitem in regSubkeys ( root, path2 )
+			i+=1
+			descFileData[i]="^NL^[" & regitem & "]"
+			# Third level of subfolders
+			path3 = path2 \ regitem
+			Call("regitems", path3)
+			ForEach regitem in regSubkeys ( root, path3 )
+				i+=1
+				descFileData[i]="^NL^[" & regitem & "]"
+				# Fourth level of subfolders
+				path4 = path3 \ regitem
+				Call("regitems", path4)
+				ForEach regitem in regSubkeys ( root, path4 )
+					i+=1
+					descFileData[i]="^NL^[" & regitem & "]"
+					# Fifth level of subfolders
+					path5 = path4 \ regitem
+					Call("regitems", path5)
+					ForEach regitem in regSubkeys ( root, path5 )
+						i+=1
+						descFileData[i]="^NL^[" & regitem & "]"
+						# Sixth level of subfolders
+						path6 = path5 \ regitem
+						Call("regitems", path6)
+						ForEach regitem in regSubkeys ( root, path6 )
+							i+=1
+							descFileData[i]="^NL^[" & regitem & "]"
+							# Seventh level of subfolders
+							path7 = path6 \ regitem
+							Call("regitems", path7)
+						EndForEach
+					EndForEach
+				EndForEach
+			EndForEach
+		EndForEach
+	EndForEach
+EndForEach
+ForEach variable in array ( descFileData )
+	WriteFile(descFileName, variable, TRUE)
+	WriteFile(descFileName, "^NL^", TRUE)
+EndForEach
+Message("Finished")
+
+Sub regitems (path)
+	Global(i, root, descFileData)
+	i+=1
+	descFileData[i]="Default="
+	ForEach regvalue, regdata in regValues ( root, path )
+		i+=1
+		descFileData[i]=regvalue & "="
+	EndForEach
+EndSub
