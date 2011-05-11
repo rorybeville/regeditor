@@ -6,9 +6,13 @@
 
 regpath = argv[1]
 If(regpath eq "")
-  bigmessage("This program is run by a link in this form:^NL^CallScript(""regEditor.mscr"",^NL^""registry path to edit"",^NL^""Application name"",^NL^""confirm changes"")","ERROR")
+  bigmessage("This program is run by a link in this form:^NL^CallScript(""regEditor.mscr"",^NL^""registry path to edit"",^NL^\
+  ""Application name"",^NL^""confirm changes"")","ERROR")
   exit
 EndIf
+bigmessage("This program allows you to make changes to your registry.^NL^\
+Some values can be changed, but have no affect since they are only monitoring the results of some other function.^NL^\
+Also, changing some values can adversely affect your phone's operation.^NL^Continue at your own risk.","WARNING")
 
 root = Substr(regpath, 0, Find(regpath, "\" )-1)
 regpath = Substr(regpath,Find(regpath, "\" )+1)
