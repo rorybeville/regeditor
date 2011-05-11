@@ -131,25 +131,28 @@ Sub regList
 		existValue=Replace( existValue, "hex(2):", "," )
 		existValue=Replace( existValue, "hex(7):", "," )
 		while(1)
-			If(SubStr(existValue, Length(existValue)-2) eq ",00")
-				existValue = SubStr(existValue, 1, Length(existValue)-3)
-				If(existValue eq ",00")
+			If(existValue eq ",")
+				existValue = ""
+				Break
+			EndIf
+			If(SubStr(existValue, Length(existValue)-5) eq ",00,00")
+				existValue = SubStr(existValue, 1, Length(existValue)-6)
+				If(existValue eq "" OR existValue eq ",00,00")
+					existValue = ""
 					Break
 				EndIf
 			Else
 				Break
 			EndIf
 		EndWhile
-		existValue=Replace( existValue, ",00,00", "~" )
-		existValue=Replace( existValue, ",00", "" )
-		If(existValue ne "")
-			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
-			existValue=Replace( existValue, "," & ToLower(xhex), xtext )
-			EndForEach
-		EndIf
 		If(xtypename eq "MultiString")
 		multi = 1
-			existValue=Replace( existValue, "~", "^NL^" )
+			existValue=Replace( existValue, ",00,00,00", ",00^NL^" )
+		EndIf
+		If(existValue ne "")
+			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
+			existValue=Replace( existValue, ToLower(xhex), xtext )
+			EndForEach
 		EndIf
 	ElseIf(Find(existValue, "hex:"))
 		xtypename = "Binary"
@@ -198,7 +201,7 @@ Sub regList
 	If (promptForConfirmation)
 		confirmation = Question("Set '" & regkey[j] &"' to new value?^NL^" & newValue, "Confirmation required!")
 	ElseIf (newValue eq "")
-		confirmation = FALSE
+		confirmation = Question("Set '" & regkey[j] &"' to blank?^NL^", "Confirmation required!")
 	Else
 		confirmation = TRUE
 	EndIf
@@ -215,12 +218,12 @@ Sub iniWriteNewValue
 		ForEach variable in charsOf ( newValue )
 			ForEach xhex, xtext in inikeys ( "Hex2Text", "Convert" )
 				If(variable eq xtext)
-					variable="," & xhex & ",00"
+					variable = xhex
 				EndIf
 			EndForEach
 			newerValue = newerValue & variable
 		EndForEach
-		newerValue = xtypename & SubStr(newerValue, 2)
+		newerValue = "hex(2):" & SubStr(newerValue, 2)
 		RegWriteExt( root, regpathbase[j], regkey[j], newerValue )
 	ElseIf(xtypename eq "MultiString")
 		newValuearray = Split(newValue, "^NL^", FALSE)
