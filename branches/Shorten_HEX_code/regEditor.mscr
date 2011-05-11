@@ -131,6 +131,10 @@ Sub regList
 		existValue=Replace( existValue, "hex(2):", "," )
 		existValue=Replace( existValue, "hex(7):", "," )
 		while(1)
+			If(existValue eq ",")
+				existValue = ""
+				Break
+			EndIf
 			If(SubStr(existValue, Length(existValue)-5) eq ",00,00")
 				existValue = SubStr(existValue, 1, Length(existValue)-6)
 				If(existValue eq "" OR existValue eq ",00,00")
@@ -197,7 +201,7 @@ Sub regList
 	If (promptForConfirmation)
 		confirmation = Question("Set '" & regkey[j] &"' to new value?^NL^" & newValue, "Confirmation required!")
 	ElseIf (newValue eq "")
-		confirmation = FALSE
+		confirmation = Question("Set '" & regkey[j] &"' to blank?^NL^", "Confirmation required!")
 	Else
 		confirmation = TRUE
 	EndIf
