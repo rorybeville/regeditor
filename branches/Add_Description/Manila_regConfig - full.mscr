@@ -1,1 +1,0 @@
-CallScript("regEditor.mscr", "HKCU\Software\HTC\Manila", "Sense", TRUE, TRUE)

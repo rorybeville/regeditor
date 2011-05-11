@@ -1,1 +1,0 @@
-CallScript("regEditor.mscr", "HKCU\Software\A_C\S2U2", "S2U2")
