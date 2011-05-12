@@ -1,0 +1,1 @@
+CallScript("regExtractor.mscr", "HKCU\Software\HTC\Manila", "Sense")
