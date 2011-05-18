@@ -39,11 +39,11 @@ SetMessageFont(10)
 StatusType(ST_MESSAGE, 0)
 StatusMessage("Loading " & regpathbase[j] & " sections")
 
-Call("ChoiceList")
-
+choosenSection = 1
 While(choosenSection > 0)
+Call("ChoiceList")
 	If (MaxIndex(regarray) > 0)
-		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 1,0, regarray)
+		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 1,0, choicearray)
 		If (choosenSection = 1)
 			j-=1
 			If(j > 0)
@@ -92,24 +92,32 @@ Sub iniChoiceFormat
 EndSub
 
 sub ChoiceList
-	Global(j, root, regkey, regpathbase, regarray, choosenSection)
+	Global(j, root, regkey, regpathbase, regarray, choosenSection, choicearray)
 	choosenSection = 1
 	clear(regarray)
+	Clear(choicearray)
 	i=1
 	If(j = 1)
 		regarray[i] = "<exit>"
+		choicearray[i] = "<exit>"
 	Else
 		regarray[i] = "<..>"
+		choicearray[i] = "<..>"
 	EndIf
 	ForEach regitem in regSubkeys ( root, regpathbase[j] )
 		i+=1
 		regarray[i] = "<" & regitem & ">"
+		choicearray[i] = "<" & regitem & ">"
 	EndForEach
 	i+=1
 	regarray[i] = "(Default)"
+	choicearray[i] = "(Default)=" & RegReadExt(root, regpathbase[j], "")
 	ForEach regvalue, regdata in regValues ( root, regpathbase[j] )
-		i+=1
-		regarray[i] = regvalue
+		If(regvalue ne "")
+			i+=1
+			regarray[i] = regvalue
+			choicearray[i] = regvalue & "=" & @regreader(regvalue)
+		EndIf
 	EndForEach
 	If(i eq 1)
 	Message("Registry location " & root \ regpathbase[j] & " is empty", "ERROR")
@@ -118,15 +126,14 @@ sub ChoiceList
 	StatusClear()
 EndSub
 
-Sub regList
+Sub regreader(regvalue)
 	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue, descFileName)
-	If(regkey[j] eq "(Default)")
+	If(regvalue eq "(Default)")
 		existValue = RegReadExt(root, regpathbase[j], "")
 		existValue = (existValue eq "-")?"":existValue
 	Else
-		existValue = RegReadExt(root, regpathbase[j], regkey[j])
+		existValue = RegReadExt(root, regpathbase[j], regvalue)
 	EndIf
-	multi = 0
 	xtypename = ""
 	If(Find(existValue, "hex(7):") or Find(existValue, "hex(2):"))
 		xtypename = SubStr(existValue,1,7)
@@ -150,7 +157,6 @@ Sub regList
 			EndIf
 		EndWhile
 		If(xtypename eq "MultiString")
-		multi = 1
 			existValue=Replace( existValue, ",00,00,00", ",00^NL^" )
 		EndIf
 		If(existValue ne "")
@@ -174,6 +180,15 @@ Sub regList
 		existValue = Replace(existValue,"\\","\")
 		existValue = Replace(existValue,"\""", """")
 	Else # May be undefined
+		xtypename = "unknown"
+	EndIf
+	Return(existValue)
+EndSub
+
+Sub regList
+	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue, descFileName)
+	existValue = @regreader(regkey[j])
+	If(xtypename eq "unknown")
 		ChoiceDefault("Unknown value type", "Select the type of value. Cancel to skip.", 1, 0, "String", "Decimal", "Dword", "Binary", "MultiString", "ExpandableString")
 		Case(1)
 			xtypename = "String"
@@ -200,6 +215,9 @@ Sub regList
 		EndForEach
 	EndIf
 	If(xtypename ne "unknown")
+		If(xtypename eq "MultiString")
+			multi = 1
+		EndIf
 		newValue = Input(commentList & "^NL^" & "^NL^" & regkey[j] & " = " & xtypename , "Enter new value", 0, multi, existValue)
 	EndIf
 	If (promptForConfirmation)
