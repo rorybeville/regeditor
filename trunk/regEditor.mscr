@@ -43,7 +43,7 @@ choosenSection = 1
 While(choosenSection > 0)
 Call("ChoiceList")
 	If (MaxIndex(regarray) > 0)
-		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:", 1,0, choicearray)
+		choosenSection = Choice(appName & " settings", "Please choose a Key or value setting:^NL^" & root & regpathbase[j], 1,0, choicearray)
 		If (choosenSection = 1)
 			j-=1
 			If(j > 0)
@@ -101,17 +101,17 @@ sub ChoiceList
 		regarray[i] = "<exit>"
 		choicearray[i] = "<exit>"
 	Else
-		regarray[i] = "<..>"
-		choicearray[i] = "<..>"
+		regarray[i] = "<Back to: " & root & regpathbase[j-1] & ">"
+		choicearray[i] = "<Back to: " & root & regpathbase[j-1] & ">"
 	EndIf
 	ForEach regitem in regSubkeys ( root, regpathbase[j] )
 		i+=1
 		regarray[i] = "<" & regitem & ">"
 		choicearray[i] = "<" & regitem & ">"
 	EndForEach
-	i+=1
-	regarray[i] = "(Default)"
-	choicearray[i] = "(Default)=" & RegReadExt(root, regpathbase[j], "")
+#	i+=1
+#	regarray[i] = "(Default)"
+#	choicearray[i] = "(Default)=" & RegReadExt(root, regpathbase[j], "")
 	ForEach regvalue, regdata in regValues ( root, regpathbase[j] )
 		If(regvalue ne "")
 			i+=1
@@ -128,12 +128,12 @@ EndSub
 
 Sub regreader(regvalue)
 	Global(dwordformat, xtypename, j, root, regkey, regpath, regpathbase, promptForConfirmation, newValue, descFileName)
-	If(regvalue eq "(Default)")
-		existValue = RegReadExt(root, regpathbase[j], "")
-		existValue = (existValue eq "-")?"":existValue
-	Else
+#	If((regvalue eq "(Default)") or (regvalue eq "Default"))
+#		existValue = RegReadExt(root, regpathbase[j], "")
+#		existValue = (existValue eq "-")?"":existValue
+#	Else
 		existValue = RegReadExt(root, regpathbase[j], regvalue)
-	EndIf
+#	EndIf
 	xtypename = ""
 	If(Find(existValue, "hex(7):") or Find(existValue, "hex(2):"))
 		xtypename = SubStr(existValue,1,7)
@@ -234,7 +234,7 @@ EndSub
 
 Sub iniWriteNewValue
 	Global(dwordformat, xtypename, j, root, regkey, regpathbase, newValue)
-	regkey[j] = (regkey[j] eq "(Default)")?"":regkey[j]
+#	regkey[j] = (regkey[j] eq "(Default)")?"":regkey[j]
 	If(xtypename eq "ExpandableString")
 	# Convert ASCII characters to hex
 		ForEach variable in charsOf ( newValue )
